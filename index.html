@@ -180,6 +180,26 @@
   svg.mapa path.uf { fill: var(--sunk); stroke: var(--surface); stroke-width: 3; cursor: pointer; transition: fill .4s ease; }
   svg.mapa path.hach { fill: url(#hach); pointer-events: none; }
   svg.mapa path.uf[aria-current="true"] { stroke: var(--ink); stroke-width: 7; }
+  /* Leitura do estado tocado: fica embaixo do mapa, sem trocar a tela. */
+  .leitura {
+    margin-top: .7rem; padding: .65rem .75rem; background: var(--sunk);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .leitura .nm {
+    font-family: var(--display); font-size: .9rem; font-weight: 600;
+    display: flex; justify-content: space-between; gap: .5rem; align-items: baseline;
+  }
+  .leitura .nm em { font-style: normal; font-size: .76rem; color: var(--ink-2);
+    font-variant-numeric: tabular-nums; }
+  .leitura .par {
+    display: flex; justify-content: space-between; gap: .5rem;
+    font-size: .84rem; margin-top: .35rem; font-variant-numeric: tabular-nums;
+  }
+  .leitura .par b { font-weight: 600; }
+  .leitura .l13 b { color: var(--c13); }
+  .leitura .l22 b { color: var(--c22); }
+  .leitura .vt { color: var(--ink-2); font-size: .78rem; }
+  .leitura button { margin-top: .55rem; width: 100%; font-size: .8rem; background: transparent; }
   .legenda { margin-top: .7rem; font-size: .78rem; color: var(--ink-2); display: grid; gap: .4rem; }
   .lrow { display: flex; align-items: center; gap: .45rem; }
   .ramp { width: 4.5rem; height: .7rem; border-radius: 2px; flex: none; border: 1px solid var(--line); }
@@ -336,6 +356,7 @@
       <div class="mapabox">
         <svg class="mapa" id="mapa" role="group"
              aria-label="Mapa do Brasil: toque num estado para ver a apuração dele"></svg>
+        <div class="leitura" id="leitura" hidden></div>
         <div class="legenda" id="legenda">
           <div class="lrow"><i class="swx"></i><span>sem urna apurada</span></div>
         </div>
@@ -345,9 +366,9 @@
         </button>
       </div>
       <p class="aviso">Quanto mais forte a cor, maior a vantagem de quem lidera
-        no estado. Toque para abrir a apuração dele. Os estados de FLAVIO levam
-        hachura, para o mapa ser legível também por quem não distingue vermelho
-        de verde.</p>
+        no estado. <b>Toque num estado para ver os números dele aqui embaixo.</b>
+        Os estados de FLAVIO levam hachura, para o mapa ser legível também por
+        quem não distingue vermelho de verde.</p>
     </section>
 
   </div>
@@ -888,6 +909,7 @@
       amostra();
       grafico();
       pintaExterior();
+      if (ufLida) { leEstado(ufLida); }   // mantém a leitura viva
       return;
     }
     Promise.all(lote.map(function (sg) {
@@ -1071,14 +1093,39 @@
     var p = b.getAttribute("data-ir").split("|");
     vai(p[0], p[1] || "", p[2] || "", parseInt(p[3], 10) || 0);
   });
+  // Tocar num estado mostra os números dele aqui embaixo, sem trocar a tela.
+  // Quem quiser o estado inteiro usa o botão da própria leitura.
+  var ufLida = "";
+  function leEstado(sg) {
+    var el = document.getElementById("leitura"), r = cache[sg];
+    var nome = NOMES[sg] || sg.toUpperCase();
+    ufLida = sg;
+    if (!r || !r.vv) {
+      el.innerHTML = '<div class="nm">' + nome + '<em>nenhuma urna apurada</em></div>' +
+        '<button type="button" id="abrirUf">ver só ' + nome + '</button>';
+    } else {
+      var p13 = pctValidos(r, "v13"), p22 = pctValidos(r, "v22");
+      el.innerHTML =
+        '<div class="nm">' + nome + '<em>' + d2(pctUrnas(r)) + ' das urnas</em></div>' +
+        '<div class="par l13"><span>LULA <b>' + d2(p13) + '</b></span>' +
+          '<span class="vt">' + nf.format(r.v13) + ' votos</span></div>' +
+        '<div class="par l22"><span>FLAVIO <b>' + d2(p22) + '</b></span>' +
+          '<span class="vt">' + nf.format(r.v22) + ' votos</span></div>' +
+        '<button type="button" id="abrirUf">ver só ' + nome + '</button>';
+    }
+    el.hidden = false;
+  }
+  document.getElementById("leitura").addEventListener("click", function (ev) {
+    if (ev.target.id === "abrirUf" && ufLida) { vai(ufLida, "", "", 0); }
+  });
   svg.addEventListener("click", function (ev) {
     var p = ev.target.closest("path.uf[id]");
-    if (p) { vai(p.id.slice(3), "", "", 0); }
+    if (p) { leEstado(p.id.slice(3)); }
   });
   svg.addEventListener("keydown", function (ev) {
     if (ev.key !== "Enter" && ev.key !== " ") { return; }
     var p = ev.target.closest("path.uf[id]");
-    if (p) { ev.preventDefault(); vai(p.id.slice(3), "", "", 0); }
+    if (p) { ev.preventDefault(); leEstado(p.id.slice(3)); }
   });
   document.getElementById("ext").addEventListener("click", function () {
     vai("zz", "", "", 0);
