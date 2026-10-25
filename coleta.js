@@ -52,10 +52,26 @@ async function uma(uf) {
       console.log("falhou", uf, e.message);
     }
   }
+  // Sem o Brasil não é amostra: evita gravar lixo quando o TSE oscila.
+  if (!amostra.por.br) {
+    console.log("TSE não respondeu o recorte br; nada gravado");
+    return;
+  }
+
   const alvo = path.join("dados", "historico.json");
   fs.mkdirSync("dados", { recursive: true });
+  // Histórico só começa vazio se o arquivo AINDA NÃO EXISTE. Se ele existe e
+  // não pôde ser lido, o job falha de propósito: recomeçar do zero em silêncio
+  // apagaria a curva inteira da noite.
   let hist = [];
-  try { hist = JSON.parse(fs.readFileSync(alvo, "utf8")); } catch (e) { hist = []; }
+  if (fs.existsSync(alvo)) {
+    let txt = fs.readFileSync(alvo, "utf8");
+    if (txt.charCodeAt(0) === 0xFEFF) { txt = txt.slice(1); }
+    hist = JSON.parse(txt);
+    if (!Array.isArray(hist)) {
+      throw new Error("historico.json não é uma lista — nada foi sobrescrito");
+    }
+  }
   // Nada totalizado ainda e já existe uma amostra igual: não suja o histórico.
   const ult = hist[hist.length - 1];
   const igual = ult && JSON.stringify(ult.por) === JSON.stringify(amostra.por);
