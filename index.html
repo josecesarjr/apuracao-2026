@@ -286,11 +286,9 @@
           </div>
           <div class="trilha"><span id="trEle" style="width:0"></span></div>
         </div>
-        <p class="naoconfunda">Os dois números acima medem coisas diferentes e
-          nenhum deles é percentual de votos. O de cima é <b>quantas urnas já
-          foram somadas</b>. O de baixo é <b>quantos eleitores aptos estavam
-          nessas urnas</b> — anda em ritmo diferente porque as seções têm
-          tamanhos diferentes.</p>
+        <p class="naoconfunda">Nenhum dos dois é percentual de votos. O de cima
+          é <b>quantas urnas já foram somadas</b>; o de baixo, <b>quantos
+          eleitores aptos estavam nessas urnas</b>.</p>
       </div>
     </section>
 
@@ -298,11 +296,9 @@
       <p class="eyebrow">Votos válidos</p>
       <div class="cands" id="cands"></div>
       <p class="dif" id="dif"></p>
-      <p class="aviso">A eleição se decide por <b>votos válidos</b>: a
-        Constituição manda eleger quem tiver a maioria absoluta dos votos,
-        <b>não computados os em branco e os nulos</b>. Por isso o percentual de
-        cada candidato aqui é sobre os válidos, e é esse que importa. Brancos e
-        nulos aparecem na mesa de números, fora dessa conta.</p>
+      <p class="aviso">Percentual sobre os <b>votos válidos</b>, que é o que
+        decide a eleição: a Constituição manda eleger a maioria absoluta dos
+        votos, não computados os em branco e os nulos.</p>
     </section>
 
     <section>
@@ -338,19 +334,11 @@
         </button>
       </div>
       <p class="aviso">Quanto mais forte a cor, maior a vantagem de quem lidera
-        naquele estado. Os estados de FLAVIO BOLSONARO levam hachura por cima,
-        para que o mapa também seja legível por quem não distingue vermelho de
-        verde. Toque num estado para abrir a apuração dele. O exterior entra à
-        parte: são as seções em embaixadas e consulados.</p>
+        no estado. Toque para abrir a apuração dele. Os estados de FLAVIO levam
+        hachura, para o mapa ser legível também por quem não distingue vermelho
+        de verde.</p>
     </section>
 
-    <section>
-      <p class="eyebrow">Mesa de números</p>
-      <dl class="mesa" id="mesa"></dl>
-      <p class="aviso">Comparecimento e abstenção são quem foi e quem não foi
-        votar — não têm relação com o quanto já foi apurado. Brancos e nulos
-        não entram na conta do vencedor.</p>
-    </section>
   </div>
 
   <p class="aviso" id="erro" hidden></p>
@@ -517,18 +505,6 @@
     document.getElementById("eleTot").innerHTML =
       nf.format(n(e.est)) + " de " + nf.format(n(e.te)) + "<br>eleitores aptos";
     document.getElementById("trEle").style.width = pc(e.pest) + "%";
-
-    function tile(rot, val, extra) {
-      return '<div class="tile"><dt>' + rot + '</dt><dd>' + val +
-        (extra ? ' <small>' + extra + '</small>' : '') + '</dd></div>';
-    }
-    document.getElementById("mesa").innerHTML =
-      tile("Votos válidos", nf.format(n(v.vv)), d2(pc(v.pvv))) +
-      tile("Eleitorado apto", nf.format(n(e.te))) +
-      tile("Comparecimento", nf.format(n(e.c)), d2(pc(e.pc))) +
-      tile("Abstenção", nf.format(n(e.a)), d2(pc(e.pa))) +
-      tile("Brancos", nf.format(n(v.vb)), d2(pc(v.pvb))) +
-      tile("Nulos", nf.format(n(v.vn)), d2(pc(v.pvn)));
 
     return (d.dg || "") + " " + (d.hg || "");
   }
