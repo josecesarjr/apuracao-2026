@@ -185,6 +185,12 @@
   .tile dd { margin: .2rem 0 0; font-family: var(--display); font-weight: 600; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
   .tile dd small { font-family: var(--body); font-weight: 400; font-size: .76rem; color: var(--ink-2); margin-left: .3rem; }
 
+  .aguardando {
+    margin: 1.2rem 0 0; background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--ink); border-radius: 4px; padding: .8rem .9rem;
+    font-size: .88rem;
+  }
+  .aguardando b { font-weight: 600; }
   .aviso { margin-top: 1rem; border-left: 2px solid var(--line); padding: .1rem 0 .1rem .8rem; font-size: .84rem; color: var(--ink-2); }
   .aviso a { color: inherit; }
   footer { margin-top: 2rem; border-top: 1px solid var(--line); padding-top: .9rem; font-size: .78rem; color: var(--ink-2); }
@@ -253,6 +259,12 @@
       <button type="button" data-ir="zz|" aria-pressed="false">Exterior</button>
     </div>
   </div>
+
+  <p class="aguardando" id="antes" hidden>
+    <b>A votação vai até as 17h</b>, horário de Brasília. Até lá fica tudo em
+    zero: o TSE só divulga números depois que as urnas fecham. Esta página se
+    atualiza sozinha a cada minuto — pode deixar aberta, não precisa recarregar.
+  </p>
 
   <div aria-live="polite">
     <section>
@@ -495,6 +507,8 @@
     }
 
     var s = d.s || {}, e = d.e || {}, v = d.v || {};
+    // o aviso das 17h sai de cena sozinho na primeira urna totalizada
+    document.getElementById("antes").hidden = n(s.st) > 0;
     document.getElementById("pst").textContent = d2(pc(s.pst));
     document.getElementById("secoes").innerHTML =
       nf.format(n(s.st)) + " de " + nf.format(n(s.ts)) + "<br>seções";
