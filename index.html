@@ -997,13 +997,35 @@
 
   // ---------------------------------------------------------- relógio
   var ultima = 0, horaTse = "";
+
+  // Idade do dado do TSE, não da nossa conferência: o TSE pode ficar minutos
+  // sem publicar, e aí a página está certa mas o número é velho. Quem olha
+  // precisa ver isso, senão parece que a página travou.
+  function idadeTse() {
+    var p = (horaTse || "").split(" ");
+    if (p.length !== 2) { return -1; }
+    var d = p[0].split("/"), h = p[1].split(":");
+    if (d.length !== 3 || h.length !== 3) { return -1; }
+    var t = new Date(+d[2], +d[1] - 1, +d[0], +h[0], +h[1], +h[2]).getTime();
+    var min = Math.round((Date.now() - t) / 60000);
+    return (min < 0 || min > 1440) ? -1 : min;
+  }
+
   function relogio() {
     var el = document.getElementById("hora"), dot = document.getElementById("dot");
     if (!ultima) { return; }
     var seg = Math.round((Date.now() - ultima) / 1000);
-    var q = seg < 60 ? "há " + seg + " s" : "há " + Math.round(seg / 60) + " min";
-    el.textContent = "TSE " + horaTse + " · conferido " + q;
-    dot.className = seg > 180 ? "dot stale" : "dot ok";
+    var idade = idadeTse();
+    var txt = "TSE " + horaTse;
+    if (idade >= 5) {
+      txt += " · parado há " + (idade < 60 ? idade + " min" :
+        Math.floor(idade / 60) + "h" + ("0" + (idade % 60)).slice(-2));
+    } else {
+      txt += " · conferido " +
+        (seg < 60 ? "há " + seg + " s" : "há " + Math.round(seg / 60) + " min");
+    }
+    el.textContent = txt;
+    dot.className = (idade >= 5 || seg > 180) ? "dot stale" : "dot ok";
   }
 
   var buscando = false;
