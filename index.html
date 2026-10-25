@@ -154,6 +154,9 @@
   /* ---------------------------------------------------------- gráfico */
   .grafbox { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: .9rem; }
   .grafbox .ctl { margin-bottom: .7rem; }
+  .passo { display: flex; gap: .3rem; flex: none; }
+  .passo button { font-size: .78rem; padding: .4rem .5rem; background: transparent; }
+  .passo button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
   svg.graf { display: block; width: 100%; height: auto; }
   .vazio { margin: 0; padding: 1.6rem .4rem; text-align: center; font-size: .86rem; color: var(--ink-2); }
   .urnas { margin: .7rem 0 0; padding-top: .7rem; border-top: 1px solid var(--line); display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; font-variant-numeric: tabular-nums; }
@@ -291,10 +294,14 @@
     </section>
 
     <section>
-      <p class="eyebrow">Evolução a cada 30 minutos</p>
+      <p class="eyebrow">Evolução ao longo da noite</p>
       <div class="grafbox">
         <div class="ctl">
           <select id="gesc" aria-label="Recorte do gráfico"></select>
+          <div class="passo" id="passo" role="group" aria-label="Intervalo entre marcas">
+            <button type="button" data-min="15" aria-pressed="false">15 min</button>
+            <button type="button" data-min="30" aria-pressed="true">30 min</button>
+          </div>
         </div>
         <div id="grafwrap"></div>
         <p class="urnas">
@@ -367,7 +374,9 @@
     sul: { nm: "Sul", ufs: ["pr","rs","sc"] }
   };
   var nf = new Intl.NumberFormat("pt-BR");
-  var BUCKET = 30 * 60 * 1000;   // meia hora
+  // Grava de 15 em 15 min; o gráfico agrupa em 15 ou 30 conforme o botão.
+  var BUCKET = 15 * 60 * 1000;
+  var PASSO = 30 * 60 * 1000;
   var CHAVE = "apuracao2026.hist.v1";
 
   var esc = { uf: "br", mun: "", nm: "Brasil", z: 0 };
@@ -599,8 +608,8 @@
   function gravaHist() {
     try {
       var chaves = Object.keys(hist).sort(), i;
-      // guarda as últimas 48 meias-horas (24 h)
-      for (i = 0; i < chaves.length - 48; i++) { delete hist[chaves[i]]; }
+      // guarda os últimos 96 quartos de hora (24 h)
+      for (i = 0; i < chaves.length - 96; i++) { delete hist[chaves[i]]; }
       localStorage.setItem(CHAVE, JSON.stringify(hist));
     } catch (e) { /* aba anônima, cota cheia: o gráfico só não persiste */ }
   }
@@ -659,7 +668,7 @@
         histRemoto = false;
         document.getElementById("fonteHist").innerHTML =
           "O TSE publica só a foto do momento, sem histórico. Esta curva é " +
-          "montada por este aparelho, a cada meia hora, enquanto a página " +
+          "montada por este aparelho, de 15 em 15 minutos, enquanto a página " +
           "estiver aberta — então ela começa quando você abre e fica guardada " +
           "só aqui. Deixe a página aberta durante a apuração para a linha " +
           "ficar completa.";
@@ -670,15 +679,25 @@
   function grafico() {
     var k = document.getElementById("gesc").value || "br";
     var wrap = document.getElementById("grafwrap");
-    var buckets = Object.keys(hist).sort(function (a, b) { return a - b; })
+    // Agrupa os quartos de hora gravados no passo escolhido (15 ou 30 min),
+    // ficando com a última leitura de cada intervalo.
+    var brutos = Object.keys(hist).sort(function (a, b) { return a - b; })
       .filter(function (b) { return hist[b][k]; });
+    var mapa = {}, ordem = [];
+    brutos.forEach(function (b) {
+      var g = String(Math.floor(+b / PASSO) * PASSO);
+      if (!mapa[g]) { ordem.push(g); }
+      mapa[g] = hist[b][k];
+    });
+    var buckets = ordem;
+    function val(b) { return mapa[b]; }
 
     var r = resumoDoEscopo(k);
     document.getElementById("urnasVal").textContent = r ? d2(pctUrnas(r)) : "—";
 
     if (buckets.length < 2) {
-      wrap.innerHTML = '<p class="vazio">A linha aparece a partir da segunda ' +
-        'meia hora com voto somado. ' +
+      wrap.innerHTML = '<p class="vazio">As curvas aparecem a partir da ' +
+        'segunda marca com voto somado. ' +
         (buckets.length ? 'Primeira marca já registrada.' :
           'Nada somado neste recorte ainda.') + '</p>';
       return;
@@ -687,7 +706,7 @@
     var W = 320, H = 170, L = 34, R = 10, T = 10, B = 24;
     var serie13 = [], serie22 = [], lo = 100, hi = 0;
     buckets.forEach(function (b) {
-      var v = hist[b][k];
+      var v = val(b);
       serie13.push(v[0]); serie22.push(v[1]);
       lo = Math.min(lo, v[0], v[1]); hi = Math.max(hi, v[0], v[1]);
     });
@@ -697,10 +716,38 @@
     function px(i) { return L + (buckets.length === 1 ? 0 :
       i * (W - L - R) / (buckets.length - 1)); }
     function py(v) { return T + (hi - v) * (H - T - B) / (hi - lo); }
-    function linha(s) {
-      return s.map(function (v, i) {
-        return (i ? "L" : "M") + px(i).toFixed(1) + " " + py(v).toFixed(1);
-      }).join("");
+    // Curva monótona (Fritsch–Carlson): arredonda a linha sem inventar
+    // subida ou descida que os dados não têm — uma spline comum chegaria a
+    // ultrapassar os pontos, o que num gráfico de eleição seria mentira.
+    function suave(s) {
+      var p = s.map(function (v, i) { return [px(i), py(v)]; });
+      var N = p.length, i, d = [], m = [];
+      if (N < 3) {
+        return p.map(function (q, j) {
+          return (j ? "L" : "M") + q[0].toFixed(1) + " " + q[1].toFixed(1);
+        }).join("");
+      }
+      for (i = 0; i < N - 1; i++) { d[i] = (p[i + 1][1] - p[i][1]) / (p[i + 1][0] - p[i][0]); }
+      m[0] = d[0]; m[N - 1] = d[N - 2];
+      for (i = 1; i < N - 1; i++) {
+        m[i] = (d[i - 1] * d[i] <= 0) ? 0 : (d[i - 1] + d[i]) / 2;
+      }
+      for (i = 0; i < N - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        var a = m[i] / d[i], b = m[i + 1] / d[i], ss = a * a + b * b;
+        if (ss > 9) {
+          var t = 3 / Math.sqrt(ss);
+          m[i] = t * a * d[i]; m[i + 1] = t * b * d[i];
+        }
+      }
+      var out = "M" + p[0][0].toFixed(1) + " " + p[0][1].toFixed(1);
+      for (i = 0; i < N - 1; i++) {
+        var h = p[i + 1][0] - p[i][0];
+        out += "C" + (p[i][0] + h / 3).toFixed(1) + " " + (p[i][1] + m[i] * h / 3).toFixed(1) +
+          " " + (p[i + 1][0] - h / 3).toFixed(1) + " " + (p[i + 1][1] - m[i + 1] * h / 3).toFixed(1) +
+          " " + p[i + 1][0].toFixed(1) + " " + p[i + 1][1].toFixed(1);
+      }
+      return out;
     }
     function hhmm(b) {
       var d = new Date(+b);
@@ -721,11 +768,21 @@
     g += '<text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end" ' +
       'font-size="9" fill="var(--ink-2)">' + hhmm(buckets[buckets.length - 1]) + '</text>';
 
-    g += '<path d="' + linha(serie13) + '" fill="none" stroke="var(--c13)" ' +
+    g += '<path d="' + suave(serie13) + '" fill="none" stroke="var(--c13)" ' +
       'stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
-    g += '<path d="' + linha(serie22) + '" fill="none" stroke="var(--c22)" ' +
+    g += '<path d="' + suave(serie22) + '" fill="none" stroke="var(--c22)" ' +
       'stroke-width="2" stroke-dasharray="6 3" stroke-linejoin="round" ' +
       'stroke-linecap="round"/>';
+
+    // marca cada leitura real, para a curva não esconder onde há dado
+    serie13.forEach(function (v, i) {
+      g += '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(v).toFixed(1) +
+        '" r="1.8" fill="var(--c13)" opacity=".75"/>';
+    });
+    serie22.forEach(function (v, i) {
+      g += '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(v).toFixed(1) +
+        '" r="1.8" fill="var(--c22)" opacity=".75"/>';
+    });
 
     var u = buckets.length - 1;
     g += '<circle cx="' + px(u).toFixed(1) + '" cy="' + py(serie13[u]).toFixed(1) +
@@ -967,6 +1024,15 @@
   });
   document.getElementById("gesc").addEventListener("change", function () {
     rotuloUrnas(); grafico();
+  });
+  document.getElementById("passo").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-min]");
+    if (!b) { return; }
+    PASSO = parseInt(b.getAttribute("data-min"), 10) * 60 * 1000;
+    Array.prototype.forEach.call(this.children, function (o) {
+      o.setAttribute("aria-pressed", o === b ? "true" : "false");
+    });
+    grafico();
   });
   ufSel.addEventListener("change", function () { vai(ufSel.value, "", "", 0); });
   document.addEventListener("visibilitychange", function () {
