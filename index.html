@@ -790,13 +790,14 @@
     g += '<circle cx="' + px(u).toFixed(1) + '" cy="' + py(serie22[u]).toFixed(1) +
       '" r="4" fill="var(--c22)" stroke="var(--surface)" stroke-width="2"/>';
 
+    // contorno na cor do fundo para o rótulo não ser cortado pela própria linha
+    var halo = 'paint-order="stroke" stroke="var(--surface)" stroke-width="3.5" ' +
+      'stroke-linejoin="round" text-anchor="end" font-size="10" font-weight="600"';
     var sep = Math.abs(py(serie13[u]) - py(serie22[u])) < 11;
     g += '<text x="' + (px(u) - 7) + '" y="' + (py(serie13[u]) + (sep ? -6 : 3.5)).toFixed(1) +
-      '" text-anchor="end" font-size="10" font-weight="600" fill="var(--c13)">' +
-      serie13[u].toFixed(1) + '%</text>';
+      '" ' + halo + ' fill="var(--c13)">' + serie13[u].toFixed(1) + '%</text>';
     g += '<text x="' + (px(u) - 7) + '" y="' + (py(serie22[u]) + (sep ? 11 : 3.5)).toFixed(1) +
-      '" text-anchor="end" font-size="10" font-weight="600" fill="var(--c22)">' +
-      serie22[u].toFixed(1) + '%</text>';
+      '" ' + halo + ' fill="var(--c22)">' + serie22[u].toFixed(1) + '%</text>';
 
     wrap.innerHTML =
       '<svg class="graf" viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
