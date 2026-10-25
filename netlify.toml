@@ -1,0 +1,27 @@
+# Site estático: nada para compilar, publica a própria raiz.
+[build]
+  publish = "."
+
+# Noite de apuração: a página precisa chegar atualizada rápido.
+# O HTML vence em 60 s; os dados do TSE a própria página busca sem cache.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=60, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=60, must-revalidate"
+
+# O mapa dos estados não muda: pode ficar guardado por bastante tempo.
+[[headers]]
+  for = "/mapa.js"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+# O histórico, quando a automação estiver ligada, muda a cada coleta.
+[[headers]]
+  for = "/dados/*"
+  [headers.values]
+    Cache-Control = "public, max-age=30, must-revalidate"
