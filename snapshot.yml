@@ -1,0 +1,35 @@
+name: Histórico da apuração
+
+# O TSE publica só a foto do momento. Para existir gráfico de evolução,
+# alguém precisa guardar essas fotos: é o que este job faz, a cada 10 min,
+# gravando no próprio repositório. O cron do GitHub é melhor-esforço e pode
+# atrasar alguns minutos em horário de pico.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: historico
+  cancel-in-progress: false
+
+jobs:
+  amostra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Coletar amostra do TSE
+        run: node coleta.js
+      - name: Commitar se mudou
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados/historico.json
+          git diff --staged --quiet || git commit -m "Amostra da apuração $(date -u +%H:%M)Z"
+          git push
