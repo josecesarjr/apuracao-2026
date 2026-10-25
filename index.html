@@ -148,6 +148,13 @@
   .c13 .barra span { background: var(--c13); }
   .c22 .pct, .c22 .partido b { color: var(--c22); }
   .c22 .barra span { background: var(--c22); }
+  /* Variação em pontos percentuais: cor neutra de propósito — subir não é
+     "bom" nem "ruim", é só o que o número fez. */
+  .var {
+    margin: .45rem 0 0; font-size: .76rem; color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .var span { color: var(--ink); font-weight: 600; }
   .dif { margin: .8rem 0 0; font-size: .84rem; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: center; }
   .dif b { color: var(--ink); font-weight: 600; }
 
@@ -465,6 +472,32 @@
     return cache[k];
   }
 
+  // Variação em pontos percentuais: contra a leitura anterior (15 min) e
+  // contra a primeira da noite. Só existe onde há histórico do recorte.
+  function variacao(numero) {
+    if (esc.mun) { return null; }
+    var k = esc.uf;
+    var bs = Object.keys(hist).sort(function (a, b) { return a - b; })
+      .filter(function (b) { return hist[b][k]; });
+    if (bs.length < 2) { return null; }
+    var col = numero === "13" ? 0 : 1;
+    var agora = hist[bs[bs.length - 1]][k][col];
+    return {
+      curto: agora - hist[bs[bs.length - 2]][k][col],
+      noite: agora - hist[bs[0]][k][col]
+    };
+  }
+  function seta(x) {
+    if (x > 0.004) { return "▲"; }
+    if (x < -0.004) { return "▼"; }
+    return "=";
+  }
+  function pp(x) {
+    return (x > 0 ? "+" : x < 0 ? "−" : "") +
+      Math.abs(x).toLocaleString("pt-BR",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " pp";
+  }
+
   // ---------------------------------------------------------- painel
   function desenha(d) {
     var cs = candidatos(d), r = resumo(d), html = "";
@@ -481,6 +514,13 @@
             '<div class="num"><span class="pct">' + d2(p) + '</span>' +
               '<span class="votos">' + nf.format(c.votos) + ' votos válidos</span></div>' +
             '<div class="barra"><span style="width:' + p + '%"></span></div>' +
+            (function () {
+              var vr = variacao(c.numero);
+              if (!vr) { return ''; }
+              return '<p class="var"><span>' + seta(vr.curto) + ' ' +
+                pp(vr.curto) + '</span> nos últimos 15 min &middot; <span>' +
+                seta(vr.noite) + ' ' + pp(vr.noite) + '</span> desde o início</p>';
+            })() +
           '</div>' +
         '</div>';
     });
@@ -607,7 +647,7 @@
     if (histRemoto) { return; }
     var b = String(Math.floor(Date.now() / BUCKET) * BUCKET);
     if (!hist[b]) { hist[b] = {}; }
-    var escopos = ["br"].concat(Object.keys(REGIOES)).concat(UFS);
+    var escopos = ["br"].concat(Object.keys(REGIOES)).concat(UFS).concat(["zz"]);
     escopos.forEach(function (k) {
       var r = resumoDoEscopo(k);
       if (!r || r.vv === 0) { return; }
