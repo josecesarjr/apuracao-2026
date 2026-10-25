@@ -717,7 +717,9 @@
       return;
     }
 
-    var W = 320, H = 170, L = 34, R = 10, T = 10, B = 24;
+    // Margem direita larga: é onde ficam o nome e o valor de cada curva,
+    // como num relatório de mercado — dispensa caixa de legenda.
+    var W = 320, H = 150, L = 26, R = 68, T = 12, B = 22;
     var serie13 = [], serie22 = [], lo = 100, hi = 0;
     buckets.forEach(function (b) {
       var v = val(b);
@@ -769,18 +771,27 @@
     }
 
     var g = "", i, yv;
-    for (i = 0; i <= 3; i++) {
-      yv = lo + (hi - lo) * i / 3;
+    // Três marcas de escala, discretas, e o eixo do tempo embaixo.
+    for (i = 0; i <= 2; i++) {
+      yv = lo + (hi - lo) * i / 2;
       g += '<line x1="' + L + '" y1="' + py(yv).toFixed(1) + '" x2="' + (W - R) +
         '" y2="' + py(yv).toFixed(1) + '" stroke="var(--line)" stroke-width="1"/>' +
-        '<text x="' + (L - 5) + '" y="' + (py(yv) + 3.5).toFixed(1) +
-        '" text-anchor="end" font-size="9" fill="var(--ink-2)">' +
-        yv.toFixed(0) + '%</text>';
+        '<text x="' + (L - 4) + '" y="' + (py(yv) + 3).toFixed(1) +
+        '" text-anchor="end" font-size="8" fill="var(--ink-2)">' +
+        yv.toFixed(0) + '</text>';
     }
-    g += '<text x="' + L + '" y="' + (H - 6) + '" font-size="9" ' +
+    // Linha dos 50%: é o ponto em que a eleição vira. Só entra se couber.
+    if (lo < 50 && hi > 50) {
+      g += '<line x1="' + L + '" y1="' + py(50).toFixed(1) + '" x2="' + (W - R) +
+        '" y2="' + py(50).toFixed(1) + '" stroke="var(--ink-2)" ' +
+        'stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>' +
+        '<text x="' + (L + 3) + '" y="' + (py(50) - 3).toFixed(1) +
+        '" font-size="8" fill="var(--ink-2)">50%</text>';
+    }
+    g += '<text x="' + L + '" y="' + (H - 6) + '" font-size="8" ' +
       'fill="var(--ink-2)">' + hhmm(buckets[0]) + '</text>';
     g += '<text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end" ' +
-      'font-size="9" fill="var(--ink-2)">' + hhmm(buckets[buckets.length - 1]) + '</text>';
+      'font-size="8" fill="var(--ink-2)">' + hhmm(buckets[buckets.length - 1]) + '</text>';
 
     g += '<path d="' + suave(serie13) + '" fill="none" stroke="var(--c13)" ' +
       'stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
@@ -788,41 +799,32 @@
       'stroke-width="2" stroke-dasharray="6 3" stroke-linejoin="round" ' +
       'stroke-linecap="round"/>';
 
-    // marca cada leitura real, para a curva não esconder onde há dado
-    serie13.forEach(function (v, i) {
-      g += '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(v).toFixed(1) +
-        '" r="1.8" fill="var(--c13)" opacity=".75"/>';
-    });
-    serie22.forEach(function (v, i) {
-      g += '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(v).toFixed(1) +
-        '" r="1.8" fill="var(--c22)" opacity=".75"/>';
-    });
-
     var u = buckets.length - 1;
     g += '<circle cx="' + px(u).toFixed(1) + '" cy="' + py(serie13[u]).toFixed(1) +
-      '" r="4" fill="var(--c13)" stroke="var(--surface)" stroke-width="2"/>';
+      '" r="3" fill="var(--c13)"/>';
     g += '<circle cx="' + px(u).toFixed(1) + '" cy="' + py(serie22[u]).toFixed(1) +
-      '" r="4" fill="var(--c22)" stroke="var(--surface)" stroke-width="2"/>';
+      '" r="3" fill="var(--c22)"/>';
 
-    // contorno na cor do fundo para o rótulo não ser cortado pela própria linha
-    var halo = 'paint-order="stroke" stroke="var(--surface)" stroke-width="3.5" ' +
-      'stroke-linejoin="round" text-anchor="end" font-size="10" font-weight="600"';
-    var sep = Math.abs(py(serie13[u]) - py(serie22[u])) < 11;
-    g += '<text x="' + (px(u) - 7) + '" y="' + (py(serie13[u]) + (sep ? -6 : 3.5)).toFixed(1) +
-      '" ' + halo + ' fill="var(--c13)">' + serie13[u].toFixed(1) + '%</text>';
-    g += '<text x="' + (px(u) - 7) + '" y="' + (py(serie22[u]) + (sep ? 11 : 3.5)).toFixed(1) +
-      '" ' + halo + ' fill="var(--c22)">' + serie22[u].toFixed(1) + '%</text>';
+    // Nome e valor na ponta de cada curva, no lugar da caixa de legenda.
+    var y13 = py(serie13[u]), y22 = py(serie22[u]);
+    if (Math.abs(y13 - y22) < 13) {
+      if (y13 <= y22) { y13 -= 6; y22 += 7; } else { y13 += 7; y22 -= 6; }
+    }
+    function ponta(y, cor, nome, v) {
+      return '<text x="' + (W - R + 6) + '" y="' + (y + 3).toFixed(1) +
+        '" font-size="10" fill="' + cor + '"><tspan font-weight="600">' +
+        v.toFixed(1) + '%</tspan><tspan font-size="8" fill="var(--ink-2)"> ' +
+        nome + '</tspan></text>';
+    }
+    g += ponta(y13, "var(--c13)", "LULA", serie13[u]);
+    g += ponta(y22, "var(--c22)", "FLÁVIO", serie22[u]);
 
     wrap.innerHTML =
       '<svg class="graf" viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
       'aria-label="Evolução do percentual de votos válidos: LULA ' +
-      serie13[u].toFixed(1) + '%, FLAVIO BOLSONARO ' + serie22[u].toFixed(1) +
-      '%, em ' + buckets.length + ' marcas de meia hora">' + g + '</svg>' +
-      '<div class="legenda"><div class="lrow">' +
-      '<svg width="22" height="8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--c13)" stroke-width="2"/></svg>' +
-      '<span>LULA (13), linha cheia</span></div><div class="lrow">' +
-      '<svg width="22" height="8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--c22)" stroke-width="2" stroke-dasharray="6 3"/></svg>' +
-      '<span>FLAVIO BOLSONARO (22), linha tracejada</span></div></div>';
+      serie13[u].toFixed(1) + '% na linha cheia, FLAVIO BOLSONARO ' +
+      serie22[u].toFixed(1) + '% na linha tracejada, em ' + buckets.length +
+      ' marcas">' + g + '</svg>';
   }
 
   function montaSeletorGrafico() {
