@@ -384,7 +384,11 @@
   // Grava de 15 em 15 min; o gráfico agrupa em 15 ou 30 conforme o botão.
   var BUCKET = 15 * 60 * 1000;
   var PASSO = 30 * 60 * 1000;
-  var CHAVE = "apuracao2026.hist.v1";
+  // v2: chave nova para a noite da apuração. Trocar o nome é o que garante
+  // que nenhum aparelho carregue sobra de teste — inclusive os que já
+  // abriram a página antes.
+  var CHAVE = "apuracao2026.hist.v2";
+  var CHAVE_VELHA = "apuracao2026.hist.v1";
 
   var esc = { uf: "br", mun: "", nm: "Brasil", z: 0 };
   var cache = {};   // uf -> resumo mais recente
@@ -631,6 +635,7 @@
   // ---------------------------------------------------------- histórico
   function leHist() {
     try {
+      localStorage.removeItem(CHAVE_VELHA);   // varre a sobra dos testes
       var t = localStorage.getItem(CHAVE);
       if (t) { hist = JSON.parse(t) || {}; }
     } catch (e) { hist = {}; }
