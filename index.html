@@ -535,8 +535,9 @@
     }
     for (sg in MAPA) {
       if (Object.prototype.hasOwnProperty.call(MAPA, sg)) {
+        // display, não o atributo hidden: em SVG o hidden não esconde nada.
         html += '<path class="hach" id="h-' + sg + '" d="' + MAPA[sg] +
-          '" hidden></path>';
+          '" style="display:none"></path>';
       }
     }
     svg.innerHTML = html;
@@ -549,7 +550,7 @@
     var r = cache[sg], nome = NOMES[sg] || sg;
     if (!r || r.st === 0 || r.vv === 0) {
       p.style.fill = "";
-      if (h) { h.hidden = true; }
+      if (h) { h.style.display = "none"; }
       p.setAttribute("aria-label", nome + ": nenhuma urna apurada");
     } else {
       var p13 = pctValidos(r, "v13"), p22 = pctValidos(r, "v22");
@@ -561,7 +562,7 @@
       var cor = lider === "13" ? "var(--c13)" : "var(--c22)";
       p.style.fill = "color-mix(in srgb, " + cor + " " + forca +
         "%, var(--sunk))";
-      if (h) { h.hidden = (lider !== "22"); }
+      if (h) { h.style.display = (lider === "22") ? "" : "none"; }
       p.setAttribute("aria-label", nome + ": " +
         (lider === "13" ? "LULA" : "FLAVIO BOLSONARO") + " " + d2(share) +
         " dos válidos, " + d2(pctUrnas(r)) + " das urnas apuradas");
